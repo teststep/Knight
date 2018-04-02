@@ -51,9 +51,10 @@ def apply_blessing(engine, hero):
 
 
 def remove_effect(engine, hero):
-    if hero.gold >= int(10 * 1.5 ** engine.level) - 2 * hero.stats["intelligence"] and "base" in dir(hero):
-        hero.gold -= int(10 * 1.5 ** engine.level) - \
-                     2 * hero.stats["intelligence"]
+    if hero.gold >= (int(10 * 1.5 ** engine.level) - 2 * hero.stats["intelligence"]
+                     and "base" in dir(hero)):
+        hero.gold -= (int(10 * 1.5 ** engine.level) -
+                      2 * hero.stats["intelligence"])
         engine.hero = hero.base
         engine.hero.calc_max_hp()
         engine.notify("Effect removed")
@@ -72,7 +73,6 @@ def add_gold(engine, hero):
 
 
 class MapFactory(yaml.YAMLObject):
-
     @classmethod
     def from_yaml(cls, loader, node):
         # FIXME
@@ -94,7 +94,8 @@ class RandomMap(MapFactory):
                         self.Map[j][i] = wall
                     else:
                         self.Map[j][i] = [wall, floor1, floor2, floor3, floor1,
-                                          floor2, floor3, floor1, floor2][random.randint(0, 8)]
+                                          floor2, floor3, floor1, floor2][
+                            random.randint(0, 8)]
 
         def get_map(self):
             return self.Map
