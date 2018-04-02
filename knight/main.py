@@ -1,8 +1,8 @@
 import pygame
-import Objects
-import ScreenEngine
-import Logic
-import Service
+import objects
+import screen_engine
+import logic
+import service
 import numpy as np
 
 SCREEN_DIM = (800, 600)
@@ -26,19 +26,19 @@ base_stats = {
 def create_game(sprite_size, is_new):
     global hero, engine, drawer, iteration
     if is_new:
-        hero = Objects.Hero(base_stats, Service.create_sprite(
+        hero = objects.Hero(base_stats, service.create_sprite(
             "texture\\Hero.png", sprite_size))
-        engine = Logic.GameEngine()
-        Service.service_init(sprite_size)
-        Service.reload_game(engine, hero)
+        engine = logic.GameEngine()
+        service.service_init(sprite_size)
+        service.reload_game(engine, hero)
     else:
         engine.sprite_size = sprite_size
-        hero.sprite = Service.create_sprite("texture\\Hero.png", sprite_size)
-        Service.service_init(sprite_size, False)
+        hero.sprite = service.create_sprite("texture\\Hero.png", sprite_size)
+        service.service_init(sprite_size, False)
 
-    Logic.GameEngine.sprite_size = sprite_size
+    logic.GameEngine.sprite_size = sprite_size
 
-    with ScreenEngine as SE:
+    with screen_engine as SE:
         drawer = SE.GameSurface(
             (640, 480), pygame.SRCALPHA, (0, 480), SE.ProgressBar(
                 (640, 120), (640, 0), SE.InfoWindow(
