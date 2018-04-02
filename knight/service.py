@@ -3,9 +3,9 @@ import random
 import yaml
 import objects
 
-OBJECT_TEXTURE = "texture\\objects\\"
-ENEMY_TEXTURE = "texture\\Enemies\\"
-ALLY_TEXTURE = "texture\\Ally\\"
+OBJECT_TEXTURE = "texture/objects/"
+ENEMY_TEXTURE = "texture/enemies/"
+ALLY_TEXTURE = "texture/ally/"
 
 
 def create_sprite(img, sprite_size):
@@ -191,10 +191,10 @@ def service_init(sprite_size, full=True):
     global floor2
     global floor3
 
-    wall[0] = create_sprite("texture\\wall.png", sprite_size)
-    floor1[0] = create_sprite("texture\\Ground_1.png", sprite_size)
-    floor2[0] = create_sprite("texture\\Ground_2.png", sprite_size)
-    floor3[0] = create_sprite("texture\\Ground_3.png", sprite_size)
+    wall[0] = create_sprite("texture//wall.png", sprite_size)
+    floor1[0] = create_sprite("texture//Ground_1.png", sprite_size)
+    floor2[0] = create_sprite("texture//Ground_2.png", sprite_size)
+    floor3[0] = create_sprite("texture//Ground_3.png", sprite_size)
 
     file = open("objects.yml", "r")
 
