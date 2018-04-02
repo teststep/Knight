@@ -1,22 +1,18 @@
 import pygame
-
+import Objects
+import ScreenEngine
+import Logic
+import Service
+import numpy as np
 
 SCREEN_DIM = (800, 600)
+KEYBOARD_CONTROL = True
 
 pygame.init()
 gameDisplay = pygame.display.set_mode(SCREEN_DIM)
 pygame.display.set_caption("MyRPG")
 
-import Objects
-import ScreenEngine
-import Logic
-import Service
-
-
-KEYBOARD_CONTROL = True
-
 if not KEYBOARD_CONTROL:
-    import numpy as np
     answer = np.zeros(4, dtype=float)
 
 base_stats = {
@@ -27,9 +23,9 @@ base_stats = {
 }
 
 
-def create_game(sprite_size, isNew):
+def create_game(sprite_size, is_new):
     global hero, engine, drawer, iteration
-    if isNew:
+    if is_new:
         hero = Objects.Hero(base_stats, Service.create_sprite(
             "texture\\Hero.png", sprite_size))
         engine = Logic.GameEngine()
@@ -43,18 +39,15 @@ def create_game(sprite_size, isNew):
     Logic.GameEngine.sprite_size = sprite_size
 
     with ScreenEngine as SE:
-        drawer = SE.GameSurface((640, 480), pygame.SRCALPHA, (0, 480),
-                                SE.ProgressBar((640, 120), (640, 0),
-                                               SE.InfoWindow((160, 600), (50, 50),
-                                                             SE.HelpWindow((700, 500), pygame.SRCALPHA, (0, 0),
-                                                                           SE.ScreenHandle(
-                                                                               (0, 0))
-                                                                           )
-                                                             )
-                                               ))
+        drawer = SE.GameSurface(
+            (640, 480), pygame.SRCALPHA, (0, 480), SE.ProgressBar(
+                (640, 120), (640, 0), SE.InfoWindow(
+                    (160, 600), (50, 50), SE.HelpWindow(
+                        (700, 500), pygame.SRCALPHA, (0, 0), SE.ScreenHandle(
+                            (0, 0))
+                    ))))
 
     drawer.connect_engine(engine)
-
     iteration = 0
 
 
@@ -95,7 +88,7 @@ while engine.working:
                         iteration += 1
                 else:
                     if event.key == pygame.K_RETURN:
-                        create_game()
+                        create_game(sprite_size, is_new)
     else:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -114,7 +107,7 @@ while engine.working:
             reward = engine.score - prev_score
             print(reward)
         else:
-            create_game()
+            create_game(sprite_size, is_new)
 
     gameDisplay.blit(drawer, (0, 0))
     drawer.draw(gameDisplay)

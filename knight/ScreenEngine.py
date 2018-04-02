@@ -173,8 +173,7 @@ class InfoWindow(ScreenHandle):
     # draw next surface in chain
 
     def connect_engine(self, engine):
-        # FIXME set this class as Observer to engine and send it to next in
-        # chain
+        # FIXME set this class as Observer to engine and send it to next in chain
 
 
 class HelpWindow(ScreenHandle):
