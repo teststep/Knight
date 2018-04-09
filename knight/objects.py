@@ -17,6 +17,7 @@ class Interactive(ABC):
     def interact(self, engine, hero):
         pass
 
+
 class AbstractObject:
     pass
 
@@ -30,6 +31,14 @@ class Ally(AbstractObject, Interactive):
 
     def interact(self, engine, hero):
         self.action(engine, hero)
+
+
+class Enemy(AbstractObject):
+    def __init__(self, icon, prop, experience, position):
+        self.sprite = icon
+        self.prop = prop
+        self.experience = experience
+        self.position = position
 
 
 class Creature(AbstractObject):
