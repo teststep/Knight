@@ -38,14 +38,13 @@ def create_game(sprite_size, is_new):
 
     logic.GameEngine.sprite_size = sprite_size
 
-    with screen_engine as SE:
-        drawer = SE.GameSurface(
-            (640, 480), pygame.SRCALPHA, (0, 480), SE.ProgressBar(
-                (640, 120), (640, 0), SE.InfoWindow(
-                    (160, 600), (50, 50), SE.HelpWindow(
-                        (700, 500), pygame.SRCALPHA, (0, 0), SE.ScreenHandle(
-                            (0, 0))
-                    ))))
+    drawer = screen_engine.GameSurface(
+        (640, 480), pygame.SRCALPHA, (0, 480), screen_engine.ProgressBar(
+            (640, 120), (640, 0), screen_engine.InfoWindow(
+                (160, 600), (50, 50), screen_engine.HelpWindow(
+                    (700, 500), pygame.SRCALPHA, (0, 0), screen_engine.ScreenHandle(
+                        (0, 0))
+                ))))
 
     drawer.connect_engine(engine)
     iteration = 0

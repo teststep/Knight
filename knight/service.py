@@ -80,7 +80,7 @@ class MapFactory(yaml.YAMLObject):
     def from_yaml(cls, loader, node):
         data = loader.construct_mapping(node, deep=True)
         _map = cls.Map()
-        _obj = cls.Objects
+        _obj = cls.Objects()
         return {'map': _map, 'obj': _obj}
 
 
@@ -420,4 +420,5 @@ def service_init(sprite_size, full=True):
     if full:
         file = open("levels.yml", "r")
         level_list = yaml.load(file.read())['levels']
+        print(level_list)
         file.close()
