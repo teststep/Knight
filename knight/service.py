@@ -1,243 +1,423 @@
+import yaml
+import objects
 import pygame
 import random
-import math
 
-SCREEN_DIM = (800, 600)
-
-class Vec2d:
-
-    def __init__(self, x ,y):
-        self.x = x
-        self.y = y
-
-    def __repr__(self):
-        return "Vec2d: ({},{})".format(self.x,self.y)
-
-    def int_pair(self):
-        return (int(self.x), int(self.y))
-
-    def float_pair(self):
-        return (float(self.x), float(self.y))
+OBJECT_TEXTURE = "texture/objects/"
+ENEMY_TEXTURE = "texture/enemies/"
+ALLY_TEXTURE = "texture/ally/"
 
 
-    def __sub__(self, other):
-        return Vec2d(self.x - other.x, self.y - other.y)
+def create_sprite(img, sprite_size):
+    icon = pygame.image.load(img).convert_alpha()
+    icon = pygame.transform.scale(icon, (sprite_size, sprite_size))
+    sprite = pygame.Surface((sprite_size, sprite_size), pygame.HWSURFACE)
+    sprite.blit(icon, (0, 0))
 
-    def __add__(self, other):
-        return Vec2d(self.x + other.x, self.y + other.y)
-
-    def __mul__(self, other):
-        return Vec2d(self.x * other, self.y * other)
-
-    def __len__(self):
-        return 2
-
-    def length(x):
-        return math.sqrt(x[0] * x[0] + x[1] * x[1])
-
-    def vec(x, y):
-        return Vec2d.sub(y, x)
+    return sprite
 
 
-def choose(list):
-    for i in list:
-        if i.val == 1:
-            return i
-
-def draw_help():
-    gameDisplay.fill((50, 50, 50))
-    font1 = pygame.font.SysFont("courier", 24)
-    font2 = pygame.font.SysFont("serif", 24)
-    data = []
-    data.append(["F1", "Show Help"])
-    data.append(["R", "Restart"])
-    data.append(["P", "Pause/Play"])
-    data.append(["Num+", "Move more FAST"])
-    data.append(["Num-", "Move more SLOW"])
-    data.append(["A", "Create new curve"])
-    data.append(["M", "Add point to all curves"])
-    data.append(["F", "Delete one knot from all curves"])
-    data.append(["D", "Delete one knot from current curve"])
-    data.append(["H", "Choose active next curve"])
-    data.append(["J", "Choose active previos curve"])
-    data.append(["Num-", "Move more SLOW"])
-    data.append(["", ""])
-
-    pygame.draw.lines(gameDisplay, (255, 50, 50, 255), True, [
-                      (0, 0), (800, 0), (800, 600), (0, 600)], 5)
-    for i, text in enumerate(data):
-        gameDisplay.blit(font1.render(
-            text[0], True, (128, 128, 255)), (100, 100 + 30 * i))
-        gameDisplay.blit(font2.render(
-            text[1], True, (128, 128, 255)), (200, 100 + 30 * i))
-
-class Polilyne:
-
-    def __init__(self, ):
-        self.steps = 35
-        self.working = True
-        self.points = []
-        self.speeds = []
-        self.show_help = False
-        self.pause = True
-        self.val = 0
+def reload_game(engine, hero):
+    global level_list
+    level_list_max = len(level_list) - 1
+    engine.level += 1
+    hero.position = [1, 1]
+    engine.objects = []
+    generator = level_list[min(engine.level, level_list_max)]
+    _map = generator['map'].get_map()
+    engine.load_map(_map)
+    engine.add_objects(generator['obj'].get_objects(_map))
+    engine.add_hero(hero)
 
 
-    def draw_points(self, points, style="points", width=3, color=(255, 255, 255)):
-        if style == "line":
-            for p_n in range(-1, len(points) - 1):
-                pygame.draw.line(gameDisplay, color, (points[p_n].int_pair()[0], points[p_n].int_pair()[1]), (points[p_n+1].int_pair()[0], points[p_n+1].int_pair()[1]), width)
+def restore_hp(engine, hero):
+    engine.score += 0.1
 
-        elif style == "points":
-            for p in points:
-                if self.val == 1:
-                    pygame.draw.circle(gameDisplay, (255,0,0), (p.int_pair()[0], p.int_pair()[1]), width)
-                else:
-                    pygame.draw.circle(gameDisplay, color, (p.int_pair()[0], p.int_pair()[1]), width)
-
-    def set_points(self, points, speeds):
-        for p in range(len(points)):
-            points[p] = (points[p] + speeds[p])
-            if points[p].int_pair()[0] > SCREEN_DIM[0] or points[p].int_pair()[0] < 0:
-                speeds[p] = Vec2d( -speeds[p].float_pair()[0], speeds[p].float_pair()[1])
-            if points[p].int_pair()[1] > SCREEN_DIM[1] or points[p].int_pair()[1] < 0:
-                speeds[p] = Vec2d(speeds[p].float_pair()[0], -speeds[p].float_pair()[1])
-
-class Knot(Polilyne):
-
-    def get_knot(self, points, count):
-        if len(points) < 3:
-            return []
-        res = []
-        for i in range(-2, len(points) - 2):
-            ptn = []
-            ptn.append((points[i] + points[i + 1]) * 0.5)
-            ptn.append(points[i + 1])
-            ptn.append((points[i + 1] + points[i + 2]) * 0.5)
-            res.extend(self.get_points(ptn, count))
-        return res
-
-    def restart(self):
-        self.points = []
-        self.speeds = []
-
-    def work(self):
-        for k in program_list:
-            self.draw_points(self.points)
-            self.draw_points(self.get_knot(self.points,self.steps), "line", 3, color )
+    hero.hp = hero.max_hp
+    engine.notify("HP restored")
 
 
-    def get_point(self, points, alpha, deg=None):
-        if deg is None:
-            deg = len(points) - 1
-        if deg == 0:
-            return points[0]
+def apply_blessing(engine, hero):
+    if hero.gold >= int(20 * 1.5 ** engine.level) - 2 * hero.stats["intelligence"]:
+        engine.score += 0.2
+        hero.gold -= int(20 * 1.5 ** engine.level) - \
+                     -                     2 * hero.stats["intelligence"]
 
-        return ((points[deg] * alpha) + (self.get_point(points, alpha, deg - 1) * (1 - alpha)))
+    if random.randint(0, 1) == 0:
+        engine.hero = objects.Blessing(hero)
+        engine.notify("Blessing applied")
+        engine.hero = objects.Berserk(hero)
+        engine.notify("Berserk applied")
 
-    def get_points(self, base_points, count):
-        alpha = 1 / count
-        res = []
-        for i in range(count):
-            res.append(self.get_point(base_points, i * alpha))
-        return res
-
-    def knot_append(self, points):
-        self.points.append(Vec2d(points[0],points[1]))
-
-    def knot_remove(self):
-        if len(self.points) > 1 and len(self.speeds) > 1:
-            del self.points[-1]
-            del self.speeds[-1]
-        else:
-            self.points = []
-            self.speeds = []
-
-    def speeds_append(self,points):
-        self.speeds.append(Vec2d(points[0],points[1]))
-
-    def speed_up_down(self, option):
-        for i in range(len(self.speeds)):
-            if option == "plus":
-                self.speeds[i] = Vec2d(abs(self.speeds[i].float_pair()[0]) + 1, abs(self.speeds[i].float_pair()[1]) + 1)
-            elif option == "minus":
-                self.speeds[i] = Vec2d(abs(self.speeds[i].float_pair()[0]) - 1, abs(self.speeds[i].float_pair()[1]) - 1)
-            else:
-                raise TypeError
-
-if __name__ == "__main__":
-    pygame.init()
-    gameDisplay = pygame.display.set_mode(SCREEN_DIM)
-    pygame.display.set_caption("MyScreenSaver")
-    program_list = []
-    program = Knot()
-    program_list.append(program)
+    else:
+        engine.score -= 0.1
 
 
-    program_list[0].val = 1
-    hue = 0
-    color = pygame.Color(0)
+def remove_effect(engine, hero):
+    if hero.gold >= (int(10 * 1.5 ** engine.level) - 2 * hero.stats["intelligence"]
+                     and "base" in dir(hero)):
+        hero.gold -= (int(10 * 1.5 ** engine.level) -
+                      2 * hero.stats["intelligence"])
+        engine.hero = hero.base
+        engine.hero.calc_max_hp()
+        engine.notify("Effect removed")
 
-    while program.working:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                program.working = False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    program.working = False
-                if event.key == pygame.K_r:
-                    program.restart()
-                if event.key == pygame.K_d:
-                    choose(program_list).knot_remove()
-                if event.key == pygame.K_f:
-                    for i in program_list:
-                        i.knot_remove()
-                if event.key == pygame.K_m:
-                    for i in program_list:
-                        i.knot_append((random.randrange(50,700),random.randrange(50,500)))
-                        i.speeds_append((random.random() * 2, random.random() * 2))
-                if event.key == pygame.K_a:
-                    program_list.append(Knot())
-                    choose(program_list).val = 0
-                    program_list[-1].val = 1
-                    program_list[-1].pause = program_list[0].pause
-                if event.key == pygame.K_h:
-                    ind = program_list.index(choose(program_list))
-                    choose(program_list).val = 0
-                    program_list[ind - 1].val = 1
-                if event.key == pygame.K_j:
-                    ind = program_list.index(choose(program_list))
-                    choose(program_list).val = 0
-                    program_list[ind +1].val = 1
-                if event.key == pygame.K_p:
-                    for i in program_list:
-                        i.pause = not i.pause
-                if event.key == pygame.K_KP_PLUS:
-                    for i in program_list:
-                        i.speed_up_down("plus")
-                if event.key == pygame.K_F1:
-                    program.show_help = not program.show_help
-                if event.key == pygame.K_KP_MINUS:
-                    for i in program_list:
-                        i.speed_up_down("minus")
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                choose(program_list).knot_append(event.pos)
-                choose(program_list).speeds_append((random.random() * 2, random.random() * 2))
 
-        gameDisplay.fill((0, 0, 0))
-        hue = (hue + 1) % 360
-        color.hsla = (hue, 100, 50, 100)
+def add_gold(engine, hero):
+    if random.randint(1, 10) == 1:
+        engine.score -= 0.05
+        engine.hero = objects.Weakness(hero)
+        engine.notify("You were cursed")
+    else:
+        engine.score += 0.1
+        gold = int(random.randint(10, 1000) * (1.1 ** (engine.hero.level - 1)))
+        hero.gold += gold
+        engine.notify("{} gold added".format(gold))
 
-        for i in program_list:
-            i.work()
 
-            if not i.pause:
-                i.set_points(i.points,i.speeds)
-            if program.show_help:
-                draw_help()
+class MapFactory(yaml.YAMLObject):
+    @classmethod
+    def from_yaml(cls, loader, node):
+        data = loader.construct_mapping(node, deep=True)
+        _map = cls.Map()
+        _obj = cls.Objects
+        return {'map': _map, 'obj': _obj}
 
-        pygame.display.flip()
 
-    pygame.display.quit()
-    pygame.quit()
-    exit(0)
+class RandomMap(MapFactory):
+    yaml_tag = "!random_map"
+
+    class Map:
+
+        def __init__(self):
+            self.Map = [[0 for j in range(41)] for i in range(41)]
+            for i in range(41):
+                for j in range(41):
+                    if i == 0 or j == 0 or i == 40 or j == 40:
+                        self.Map[j][i] = wall
+                    else:
+                        self.Map[j][i] = [wall, floor1, floor2, floor3, floor1,
+                                          floor2, floor3, floor1, floor2][
+                            random.randint(0, 8)]
+
+        def get_map(self):
+            return self.Map
+
+    class Objects:
+
+        def __init__(self):
+            self.objects = []
+
+        def get_objects(self, map):
+
+            for obj_name in object_list_prob['objects']:
+                prop = object_list_prob['objects'][obj_name]
+                for i in range(random.randint(prop['min-count'], prop['max-count'])):
+                    print(obj_name)
+                    coord = (random.randint(1, 39), random.randint(1, 39))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+
+                    self.objects.append(objects.Ally(
+                        prop['sprite'], prop['action'], coord))
+            for obj_name in object_list_prob['ally']:
+                prop = object_list_prob['ally'][obj_name]
+                for i in range(random.randint(prop['min-count'], prop['max-count'])):
+                    print(obj_name)
+                    coord = (random.randint(1, 39), random.randint(1, 39))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+                    self.objects.append(objects.Ally(
+                        prop['sprite'], prop['action'], coord))
+
+            for obj_name in object_list_prob['enemies']:
+                prop = object_list_prob['enemies'][obj_name]
+                for i in range(random.randint(0, 5)):
+                    print(obj_name)
+                    coord = (random.randint(1, 30), random.randint(1, 22))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+
+                    self.objects.append(objects.Enemy(
+                        prop['sprite'], prop, prop['experience'], coord))
+
+            return self.objects
+
+class EmptyMap(MapFactory):
+    yaml_tag = "!empty_map"
+
+    class Map:
+
+        def __init__(self):
+            self.Map = [[0 for j in range(41)] for i in range(41)]
+            for i in range(41):
+                for j in range(41):
+                    if i == 0 or j == 0 or i == 40 or j == 40:
+                        self.Map[j][i] = wall
+                    else:
+                        self.Map[j][i] = [wall, floor1, floor2, floor3, floor1,
+                                          floor2, floor3, floor1, floor2][
+                            random.randint(0, 8)]
+
+        def get_map(self):
+            return self.Map
+
+    class Objects:
+
+        def __init__(self):
+            self.objects = []
+
+        def get_objects(self, map):
+
+            for obj_name in object_list_prob['objects']:
+                prop = object_list_prob['objects'][obj_name]
+                for i in range(random.randint(prop['min-count'], prop['max-count'])):
+                    print(obj_name)
+                    coord = (random.randint(1, 39), random.randint(1, 39))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+
+                    self.objects.append(objects.Ally(
+                        prop['sprite'], prop['action'], coord))
+            for obj_name in object_list_prob['ally']:
+                prop = object_list_prob['ally'][obj_name]
+                for i in range(random.randint(prop['min-count'], prop['max-count'])):
+                    print(obj_name)
+                    coord = (random.randint(1, 39), random.randint(1, 39))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+                    self.objects.append(objects.Ally(
+                        prop['sprite'], prop['action'], coord))
+
+            for obj_name in object_list_prob['enemies']:
+                prop = object_list_prob['enemies'][obj_name]
+                for i in range(random.randint(0, 5)):
+                    print(obj_name)
+                    coord = (random.randint(1, 30), random.randint(1, 22))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+
+                    self.objects.append(objects.Enemy(
+                        prop['sprite'], prop, prop['experience'], coord))
+
+            return self.objects
+
+class SpecialMap(MapFactory):
+    yaml_tag = "!special_map"
+
+    class Map:
+
+        def __init__(self):
+            self.Map = [[0 for j in range(41)] for i in range(41)]
+            for i in range(41):
+                for j in range(41):
+                    if i == 0 or j == 0 or i == 40 or j == 40:
+                        self.Map[j][i] = wall
+                    else:
+                        self.Map[j][i] = [wall, floor1, floor2, floor3, floor1,
+                                          floor2, floor3, floor1, floor2][
+                            random.randint(0, 8)]
+
+        def get_map(self):
+            return self.Map
+
+    class Objects:
+
+        def __init__(self):
+            self.objects = []
+
+        def get_objects(self, map):
+
+            for obj_name in object_list_prob['objects']:
+                prop = object_list_prob['objects'][obj_name]
+                for i in range(random.randint(prop['min-count'], prop['max-count'])):
+                    print(obj_name)
+                    coord = (random.randint(1, 39), random.randint(1, 39))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+
+                    self.objects.append(objects.Ally(
+                        prop['sprite'], prop['action'], coord))
+            for obj_name in object_list_prob['ally']:
+                prop = object_list_prob['ally'][obj_name]
+                for i in range(random.randint(prop['min-count'], prop['max-count'])):
+                    print(obj_name)
+                    coord = (random.randint(1, 39), random.randint(1, 39))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+                    self.objects.append(objects.Ally(
+                        prop['sprite'], prop['action'], coord))
+
+            for obj_name in object_list_prob['enemies']:
+                prop = object_list_prob['enemies'][obj_name]
+                for i in range(random.randint(0, 5)):
+                    print(obj_name)
+                    coord = (random.randint(1, 30), random.randint(1, 22))
+                    intersect = True
+                    while intersect:
+                        intersect = False
+                        if map[coord[1]][coord[0]] == wall:
+                            intersect = True
+                            coord = (random.randint(1, 39),
+                                     random.randint(1, 39))
+                            continue
+                        for obj in self.objects:
+                            if coord == obj.position or coord == (1, 1):
+                                intersect = True
+                                coord = (random.randint(1, 39),
+                                         random.randint(1, 39))
+
+                    self.objects.append(objects.Enemy(
+                        prop['sprite'], prop, prop['experience'], coord))
+
+            return self.objects
+
+
+# FIXME
+# add classes for YAML !empty_map and !special_map{}
+
+wall = [0]
+floor1 = [0]
+floor2 = [0]
+floor3 = [0]
+
+
+def service_init(sprite_size, full=True):
+    global object_list_prob, level_list
+
+    global wall
+    global floor1
+    global floor2
+    global floor3
+
+    wall[0] = create_sprite("texture//wall.png", sprite_size)
+    floor1[0] = create_sprite("texture//Ground_1.png", sprite_size)
+    floor2[0] = create_sprite("texture//Ground_2.png", sprite_size)
+    floor3[0] = create_sprite("texture//Ground_3.png", sprite_size)
+
+    file = open("objects.yml", "r")
+
+    object_list_tmp = yaml.load(file.read())
+    if full:
+        object_list_prob = object_list_tmp
+
+    object_list_actions = {'reload_game': reload_game,
+                           'add_gold': add_gold,
+                           'apply_blessing': apply_blessing,
+                           'remove_effect': remove_effect,
+                           'restore_hp': restore_hp}
+
+    for obj in object_list_prob['objects']:
+        prop = object_list_prob['objects'][obj]
+        prop_tmp = object_list_tmp['objects'][obj]
+        prop['sprite'][0] = create_sprite(
+            OBJECT_TEXTURE + prop_tmp['sprite'][0], sprite_size)
+        prop['action'] = object_list_actions[prop_tmp['action']]
+
+    for ally in object_list_prob['ally']:
+        prop = object_list_prob['ally'][ally]
+        prop_tmp = object_list_tmp['ally'][ally]
+        prop['sprite'][0] = create_sprite(
+            ALLY_TEXTURE + prop_tmp['sprite'][0], sprite_size)
+        prop['action'] = object_list_actions[prop_tmp['action']]
+
+    for enemy in object_list_prob['enemies']:
+        prop = object_list_prob['enemies'][enemy]
+        prop_tmp = object_list_tmp['enemies'][enemy]
+        prop['sprite'][0] = create_sprite(
+            ENEMY_TEXTURE + prop_tmp['sprite'][0], sprite_size)
+
+    file.close()
+
+    if full:
+        file = open("levels.yml", "r")
+        level_list = yaml.load(file.read())['levels']
+        file.close()
